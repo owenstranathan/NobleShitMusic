@@ -3,4 +3,5 @@
     <string name="donate">Donate</string>
     <string name="about">About</string>
     <string name="set_as_home">Set as Home</string>
+    <string name="quit">Quit</string>
 </resources>

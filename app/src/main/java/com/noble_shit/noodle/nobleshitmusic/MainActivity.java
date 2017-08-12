@@ -21,6 +21,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.MediaController;
 import android.widget.TextView;
 
 import com.noble_shit.noodle.MusicService;
@@ -32,7 +33,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
+public class MainActivity extends AppCompatActivity
+        implements
+        AdapterView.OnItemClickListener,
+        MediaController.MediaPlayerControl
+{
 
     // UI MEMBERS
 
@@ -46,9 +51,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     // MUSIC SERVICE MEMBERS
 
-    private MusicService musicService;
-    private Intent playIntent;
-    private boolean musicServiceBound = false;
+    private MusicService    musicService;
+    private Intent          playIntent;
+    private boolean         musicServiceBound = false;
+
+    // MUSIC CONTROLLER MEMBERS
+
+    private MusicController musicController;
+
 
     /****************
      * MENU METHODS *
@@ -77,6 +87,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             case R.id.Donate:
                 // link to patreon
                 return true;
+            case R.id.Quit:
+                stopService(playIntent);
+                musicService = null;
+                System.exit(0);
+                // No break on purpose
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -120,6 +135,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         // Update the directory TextView to display the current directory
         updateDirectoryTextView();
+
+        setMusicController();
     }
 
 
@@ -149,6 +166,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             updateDirectoryTextView();
         } else {
             // Send everything in this directory to the MusicService
+            musicService.setDirectory(directoryList());
+            musicService.setPlayIndex(i);
+            musicService.playFile();
         }
     }
 
@@ -257,6 +277,88 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             bindService(playIntent, musicServiceConnection, Context.BIND_AUTO_CREATE);
             startService(playIntent);
         }
+    }
+
+    /***************************
+     * MUSICCONTROLLER METHODS *
+     **************************/
+
+    private void setMusicController() {
+        musicController = new MusicController(this);
+        musicController.setPrevNextListeners(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // playNext();
+            }
+        }, new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // playPrevious();
+            }
+        });
+
+        musicController.setMediaPlayer(this);
+        musicController.setAnchorView(findViewById(R.id.DirectoryListView));
+        musicController.setEnabled(true);
+    }
+
+    /************************************
+     * MEDIACONTROLLER OVERRIDE METHODS *
+     ***********************************/
+
+    @Override
+    public void start() {
+
+    }
+
+    @Override
+    public void pause() {
+
+    }
+
+    @Override
+    public int getDuration() {
+        return 0;
+    }
+
+    @Override
+    public int getCurrentPosition() {
+        return 0;
+    }
+
+    @Override
+    public void seekTo(int i) {
+
+    }
+
+    @Override
+    public boolean isPlaying() {
+        return false;
+    }
+
+    @Override
+    public int getBufferPercentage() {
+        return 0;
+    }
+
+    @Override
+    public boolean canPause() {
+        return false;
+    }
+
+    @Override
+    public boolean canSeekBackward() {
+        return false;
+    }
+
+    @Override
+    public boolean canSeekForward() {
+        return false;
+    }
+
+    @Override
+    public int getAudioSessionId() {
+        return 0;
     }
 }
 

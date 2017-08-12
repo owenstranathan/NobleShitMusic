@@ -10,7 +10,9 @@ import android.os.PowerManager;
 import android.support.annotation.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Noodle on 8/11/17.
@@ -24,7 +26,7 @@ public class MusicService extends Service
 {
 
     private MediaPlayer mediaPlayer;
-    private File directory;
+    private List<File> directory;
     private int playbackPosition;
     private int playIndex;
 
@@ -72,7 +74,12 @@ public class MusicService extends Service
 
     @Override
     public void onCompletion(MediaPlayer mediaPlayer) {
-
+        playIndex++;
+        if (playIndex >= directory.size()) {
+            return;
+        } else {
+            playFile();
+        }
     }
 
     @Override
@@ -82,18 +89,31 @@ public class MusicService extends Service
 
     @Override
     public void onPrepared(MediaPlayer mediaPlayer) {
-
+        mediaPlayer.start();
     }
 
     /******************
      * PUBLIC METHODS *
      *****************/
 
-    public void setDirectory(File argDirectory) {
+    public void setDirectory(List<File> argDirectory) {
         directory = argDirectory;
     }
 
 
+    public void playFile() {
+        mediaPlayer.reset();
+        File song = directory.get(playIndex);
+        try {
+            mediaPlayer.setDataSource(song.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        mediaPlayer.prepareAsync();
+
+    }
+
+    public void setPlayIndex(int i) { playIndex = i; }
 
 
     /*******************
