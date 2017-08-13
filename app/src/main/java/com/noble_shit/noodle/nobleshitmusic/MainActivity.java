@@ -11,6 +11,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.media.AudioManager;
 import android.os.Environment;
 import android.os.IBinder;
 import android.support.v4.content.LocalBroadcastManager;
@@ -77,6 +78,12 @@ public class MainActivity extends AppCompatActivity
         }
     };
 
+    private BroadcastReceiver BecomingNoisyReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            showController();
+        }
+    };
 
 
     /****************
@@ -218,6 +225,7 @@ public class MainActivity extends AppCompatActivity
             activityPaused = false;
         }
         LocalBroadcastManager.getInstance(this).registerReceiver(onPrepareReceiver, new IntentFilter(MusicService.MEDIA_PLAYER_PREPARED));
+        LocalBroadcastManager.getInstance(this).registerReceiver(BecomingNoisyReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
     }
 
     @Override

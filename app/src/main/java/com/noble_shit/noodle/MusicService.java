@@ -21,7 +21,6 @@ import com.noble_shit.noodle.nobleshitmusic.R;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -73,7 +72,8 @@ public class MusicService extends Service
         }
     };
 
-    private BroadcastReceiver intentReceiver;
+    private BroadcastReceiver AudioFocusChangeReceiver;
+    private BroadcastReceiver BecomingNoisyReceiver;
     private boolean receiverRegistered = false;
 
 
@@ -339,12 +339,12 @@ public class MusicService extends Service
     }
 
     private void setupBroadcastReciever() {
-        intentReceiver = new BroadcastReceiver() {
+        AudioFocusChangeReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 String cmd = intent.getStringExtra(CMD_NAME);
-                Log.i("TAG", "intentReceiver.onReceive " + action + " / " + cmd);
+                Log.i("TAG", "AudioFocusChangeReceiver.onReceive " + action + " / " + cmd);
 
                 if (PAUSE_SERVICE_CMD.equals(action)
                         || (SERVICE_CMD.equals(action) && CMD_PAUSE.equals(cmd))) {
@@ -360,13 +360,26 @@ public class MusicService extends Service
             }
         };
 
+        BecomingNoisyReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                pause();
+                Intent onNoisyIntent = new Intent(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+                LocalBroadcastManager.getInstance(MusicService.this).sendBroadcast(onNoisyIntent);
+            }
+        };
+
+
         // Do the right thing when something else tries to play
         if (!receiverRegistered) {
             IntentFilter commandFilter = new IntentFilter();
             commandFilter.addAction(SERVICE_CMD);
             commandFilter.addAction(PAUSE_SERVICE_CMD);
             commandFilter.addAction(PLAY_SERVICE_CMD);
-            registerReceiver(intentReceiver, commandFilter);
+            // Register focus chage reciever
+            registerReceiver(AudioFocusChangeReceiver, commandFilter);
+            // Register becoming noisy reciever
+            registerReceiver(BecomingNoisyReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
             receiverRegistered = true;
         }
     }

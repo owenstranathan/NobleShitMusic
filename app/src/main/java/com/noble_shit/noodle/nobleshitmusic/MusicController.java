@@ -1,6 +1,11 @@
 package com.noble_shit.noodle.nobleshitmusic;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioManager;
+import android.support.v4.content.LocalBroadcastManager;
 import android.view.KeyEvent;
 import android.widget.MediaController;
 
@@ -11,6 +16,8 @@ import android.widget.MediaController;
 public class MusicController extends MediaController {
 
     MainActivity main;
+
+
 
     public MusicController(Context context){
         super(context, true);
@@ -26,6 +33,8 @@ public class MusicController extends MediaController {
 //                return super.dispatchKeyEvent(event);
 //        }
 //    }
+
+
 
     @Override
     public void hide() {
