@@ -21,6 +21,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:id="@+id/DirectoryListView"> </ListView>
+        
 
         <TextView
             android:id="@+id/CurrentSongTextView"
@@ -30,8 +31,8 @@
             android:textColor="#fcfdff"
             android:text="Nothing playing"
             android:padding="10dp"
-            android:onClick="toggleController"
-            />
+            android:onClick="toggleController" />
+
 
 
     </LinearLayout>

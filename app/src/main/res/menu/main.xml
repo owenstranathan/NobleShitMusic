@@ -5,20 +5,24 @@
         android:id="@+id/GoToHome"
         android:icon="@drawable/ic_home"
         android:orderInCategory="1"
-        android:title="GoToHome"
-        app:showAsAction="ifRoom|withText" />
+        android:title="Go To Home"
+        app:showAsAction="always|withText" />
+    <item
+        android:id="@+id/RepeatMode"
+        android:icon="@drawable/ic_action_repeat_all"
+        android:orderInCategory="2"
+        android:title="Repeat"
+        app:showAsAction="always|withText"
+        />
     <item
         android:id="@+id/SetAsHome"
-        android:orderInCategory="2"
+        android:orderInCategory="3"
         android:title="@string/set_as_home"/>
     <item
         android:id="@+id/About"
         android:title="@string/about"
-        android:orderInCategory="3" />
-    <item
-        android:id="@+id/Donate"
-        android:title="@string/donate"
         android:orderInCategory="4" />
+
     <item
         android:id="@+id/Quit"
         android:title="@string/quit"

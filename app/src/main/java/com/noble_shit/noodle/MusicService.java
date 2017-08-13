@@ -13,7 +13,6 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
-import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -22,6 +21,8 @@ import com.noble_shit.noodle.nobleshitmusic.R;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -37,6 +38,15 @@ public class MusicService extends Service
 {
     // Music Service Log TAG
     private static final String TAG = "MUSIC_SERVICE";
+
+    // Repeat Modes
+    public static final int REPEAT = 0;
+    public static final int REPEAT_ONE = 1;
+    public static final int NO_REPEAT = 2;
+
+    List<Integer> repeatList = Arrays.asList(REPEAT, REPEAT_ONE, NO_REPEAT);
+    private int repeatMode = REPEAT;
+
 
     private MediaPlayer mediaPlayer;
     private List<File> directory;
@@ -204,6 +214,16 @@ public class MusicService extends Service
     /******************
      * PUBLIC METHODS *
      *****************/
+    public void cycleRepeatMode() {
+        repeatMode++;
+        if(repeatMode >= repeatList.size()) {
+            repeatMode = REPEAT;
+        }
+    }
+
+    public int getRepeatMode() {
+        return repeatMode;
+    }
 
     public boolean isPrepared() {
         return prepared;
@@ -274,11 +294,20 @@ public class MusicService extends Service
     }
 
     public void next() {
+        if (repeatMode == REPEAT_ONE) {
+            playFile();
+            return;
+        }
         playIndex++;
-        if(playIndex >= directory.size()) {
+
+        if (playIndex >= directory.size()) {
             playIndex = 0;
+            if (repeatMode == NO_REPEAT) {
+                return;
+            }
         }
         playFile();
+
     }
 
     public String getFilename() {

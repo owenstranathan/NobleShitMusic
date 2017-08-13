@@ -105,6 +105,9 @@ public class MainActivity extends AppCompatActivity
                 updateDirectoryListView();
                 updateDirectoryTextView();
                 return true;
+            case R.id.RepeatMode:
+                toggleRepeat(item);
+                return true;
             case R.id.SetAsHome:
                 baseDirectory = directory;
                 updateDirectoryTextView();
@@ -113,9 +116,6 @@ public class MainActivity extends AppCompatActivity
                 // show about dialog
                 DialogFragment aboutDialog = new AboutDialogFragment();
                 aboutDialog.show(getFragmentManager(), "aboutDialog");
-                return true;
-            case R.id.Donate:
-                // link to patreon
                 return true;
             case R.id.Quit:
                 stopService(playIntent);
@@ -128,6 +128,22 @@ public class MainActivity extends AppCompatActivity
 
     }
 
+    private void toggleRepeat(MenuItem item) {
+        musicService.cycleRepeatMode();
+        int repeatMode = musicService.getRepeatMode();
+        switch (repeatMode) {
+            case MusicService.REPEAT:
+                item.setIcon(R.drawable.ic_action_repeat_all);
+                break;
+            case MusicService.REPEAT_ONE:
+                item.setIcon(R.drawable.ic_action_repeat_one);
+                break;
+            case MusicService.NO_REPEAT:
+                item.setIcon(R.drawable.ic_action_no_repeat);
+                break;
+        }
+
+    }
     /********************
      * OVERRIDE METHODS *
      *******************/
@@ -411,7 +427,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void seekTo(int i) { musicService.seekTo(i); }
+    public void seekTo(int i) { if(isPlaying()) musicService.seekTo(i); }
 
     @Override
     public boolean isPlaying() {
