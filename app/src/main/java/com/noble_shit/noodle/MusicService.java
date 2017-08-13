@@ -3,7 +3,10 @@ package com.noble_shit.noodle;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Binder;
@@ -11,6 +14,7 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 
 import com.noble_shit.noodle.nobleshitmusic.MainActivity;
 import com.noble_shit.noodle.nobleshitmusic.R;
@@ -28,8 +32,11 @@ public class MusicService extends Service
     implements
         MediaPlayer.OnCompletionListener,
         MediaPlayer.OnPreparedListener,
-        MediaPlayer.OnErrorListener
+        MediaPlayer.OnErrorListener,
+        AudioManager.OnAudioFocusChangeListener
 {
+    // Music Service Log TAG
+    private static final String TAG = "MUSIC_SERVICE";
 
     private MediaPlayer mediaPlayer;
     private List<File> directory;
@@ -42,6 +49,33 @@ public class MusicService extends Service
     public static final String MEDIA_PLAYER_PREPARED = "com.noble_shit.noodle.MusicService.MEDIA_PLAYER_PREPARED";
 
     private boolean prepared = false;
+
+    // Audio Focus fields
+    private boolean audioFocusGranted = false;
+
+    private static final String CMD_NAME = "command";
+    private static final String CMD_PAUSE = "pause";
+    private static final String CMD_STOP = "pause";
+    private static final String CMD_PLAY = "play";
+
+    // Jellybean
+    private static String SERVICE_CMD = "com.sec.android.app.music.musicservicecommand";
+    private static String PAUSE_SERVICE_CMD = "com.sec.android.app.music.musicservicecommand.pause";
+    private static String PLAY_SERVICE_CMD = "com.sec.android.app.music.musicservicecommand.play";
+
+
+    // Honeycomb
+    {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.JELLY_BEAN) {
+            SERVICE_CMD = "com.android.music.musicservicecommand";
+            PAUSE_SERVICE_CMD = "com.android.music.musicservicecommand.pause";
+            PLAY_SERVICE_CMD = "com.android.music.musicservicecommand.play";
+        }
+    };
+
+    private BroadcastReceiver intentReceiver;
+    private boolean receiverRegistered = false;
+
 
     /**********
      * BINDER *
@@ -79,6 +113,7 @@ public class MusicService extends Service
         mediaPlayer = new MediaPlayer();
         playIndex = 0;
 
+
         initMediaPlayer();
     }
 
@@ -98,7 +133,7 @@ public class MusicService extends Service
 
     @Override
     public void onPrepared(MediaPlayer mediaPlayer) {
-        mediaPlayer.start();
+        start();
 
         // Set currently playing notification
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -128,6 +163,40 @@ public class MusicService extends Service
     @Override
     public void onDestroy() {
         stopForeground(true);
+    }
+
+    @Override
+    public void onAudioFocusChange(int focusChange) {
+        switch (focusChange) {
+            case AudioManager.AUDIOFOCUS_GAIN:
+                Log.i(TAG, "AUDIOFOCUS_GAIN");
+                start();
+                break;
+            case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT:
+                Log.i(TAG, "AUDIOFOCUS_GAIN_TRANSIENT");
+                break;
+            case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK:
+                Log.i(TAG, "AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK");
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS:
+                Log.e(TAG, "AUDIOFOCUS_LOSS");
+                audioFocusGranted = false;
+                pause();
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                Log.e(TAG, "AUDIOFOCUS_LOSS_TRANSIENT");
+                pause();
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                Log.e(TAG, "AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK");
+                break;
+            case AudioManager.AUDIOFOCUS_REQUEST_FAILED:
+                Log.e(TAG, "AUDIOFOCUS_REQUEST_FAILED");
+                break;
+            default:
+                //
+        }
+
     }
 
     /******************
@@ -185,6 +254,12 @@ public class MusicService extends Service
 
 
     public void start() {
+        if(!isPlaying()) {
+            if(!audioFocusGranted && requestAudioFocus()) {
+                forceMusicStop();
+                setupBroadcastReciever();
+            }
+        }
         mediaPlayer.start();
     }
 
@@ -218,5 +293,81 @@ public class MusicService extends Service
         mediaPlayer.setOnCompletionListener(this);
         mediaPlayer.setOnErrorListener(this);
         mediaPlayer.setOnPreparedListener(this);
+    }
+
+    /***********************
+     * AUDIO FOCUS METHODS *
+     **********************/
+
+    private boolean requestAudioFocus() {
+        if (!audioFocusGranted) {
+            AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+            int result = audioManager.requestAudioFocus(this,
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN);
+
+            if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                audioFocusGranted = true;
+            } else {
+                // FAILED
+                Log.e("TAG",
+                        ">>>>>>>>>>>>> FAILED TO GET AUDIO FOCUS <<<<<<<<<<<<<<<<<<<<<<<<");
+            }
+        }
+        return audioFocusGranted;
+    }
+
+    private void abandonAudioFocus() {
+        AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        int result = audioManager.abandonAudioFocus(this);
+        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            audioFocusGranted = false;
+        } else {
+            // FAILED
+            Log.e("TAG",
+                    ">>>>>>>>>>>>> FAILED TO ABANDON AUDIO FOCUS <<<<<<<<<<<<<<<<<<<<<<<<");
+        }
+    }
+
+    private void forceMusicStop() {
+        AudioManager audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (audioManager.isMusicActive()) {
+            Intent intentToStop = new Intent(SERVICE_CMD);
+            intentToStop.putExtra(CMD_NAME, CMD_STOP);
+            sendBroadcast(intentToStop);
+        }
+    }
+
+    private void setupBroadcastReciever() {
+        intentReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                String cmd = intent.getStringExtra(CMD_NAME);
+                Log.i("TAG", "intentReceiver.onReceive " + action + " / " + cmd);
+
+                if (PAUSE_SERVICE_CMD.equals(action)
+                        || (SERVICE_CMD.equals(action) && CMD_PAUSE.equals(cmd))) {
+                    Log.d(TAG, "start()");
+                    start();
+                }
+
+                if (PLAY_SERVICE_CMD.equals(action)
+                        || (SERVICE_CMD.equals(action) && CMD_PLAY.equals(cmd))) {
+                    Log.d(TAG, "pause()");
+                    pause();
+                }
+            }
+        };
+
+        // Do the right thing when something else tries to play
+        if (!receiverRegistered) {
+            IntentFilter commandFilter = new IntentFilter();
+            commandFilter.addAction(SERVICE_CMD);
+            commandFilter.addAction(PAUSE_SERVICE_CMD);
+            commandFilter.addAction(PLAY_SERVICE_CMD);
+            registerReceiver(intentReceiver, commandFilter);
+            receiverRegistered = true;
+        }
     }
 }
