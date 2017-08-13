@@ -19,18 +19,24 @@
         <ListView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_weight="1"
             android:id="@+id/DirectoryListView"> </ListView>
 
-
+        <TextView
+            android:id="@+id/CurrentSongTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#242b35"
+            android:textColor="#fcfdff"
+            android:text="Nothing playing"
+            android:padding="5dp"
+            android:onClick="toggleController"
+            />
 
 
     </LinearLayout>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Nothing playing"
-        />
+
 
 </RelativeLayout>
 

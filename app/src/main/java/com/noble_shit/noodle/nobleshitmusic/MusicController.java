@@ -10,20 +10,22 @@ import android.widget.MediaController;
 
 public class MusicController extends MediaController {
 
+    MainActivity main;
+
     public MusicController(Context context){
-        super(context);
+        super(context, true);
+        main = (MainActivity) context;
     }
 
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        switch (event.getKeyCode() ) {
-            case KeyEvent.KEYCODE_BACK:
-                this.hide();
-                return  true;
-            default:
-                return super.dispatchKeyEvent(event);
-        }
-    }
+//    @Override
+//    public boolean dispatchKeyEvent(KeyEvent event) {
+//        switch (event.getKeyCode() ) {
+//            case KeyEvent.KEYCODE_BACK:
+//                return  true;
+//            default:
+//                return super.dispatchKeyEvent(event);
+//        }
+//    }
 
     @Override
     public void hide() {

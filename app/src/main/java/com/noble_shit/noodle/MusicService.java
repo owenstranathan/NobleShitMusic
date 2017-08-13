@@ -10,6 +10,7 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
+import android.support.v4.content.LocalBroadcastManager;
 
 import com.noble_shit.noodle.nobleshitmusic.MainActivity;
 import com.noble_shit.noodle.nobleshitmusic.R;
@@ -37,6 +38,10 @@ public class MusicService extends Service
     private static final int NOTIFY_ID = 1;
 
     private final IBinder musicServiceBinder = new MusicServiceBinder();
+
+    public static final String MEDIA_PLAYER_PREPARED = "com.noble_shit.noodle.MusicService.MEDIA_PLAYER_PREPARED";
+
+    private boolean prepared = false;
 
     /**********
      * BINDER *
@@ -112,6 +117,12 @@ public class MusicService extends Service
         Notification not = builder.getNotification();
 
         startForeground(NOTIFY_ID, not);
+
+        prepared = true;
+
+        // BroadCast that the mediaPlayer is prepared
+        Intent onPreparedIntent = new Intent(MEDIA_PLAYER_PREPARED);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(onPreparedIntent);
     }
 
     @Override
@@ -123,6 +134,10 @@ public class MusicService extends Service
      * PUBLIC METHODS *
      *****************/
 
+    public boolean isPrepared() {
+        return prepared;
+    }
+
     public void setDirectory(List<File> argDirectory) {
         directory = argDirectory;
     }
@@ -130,6 +145,7 @@ public class MusicService extends Service
 
     public void playFile() {
         mediaPlayer.reset();
+        prepared = false;
         File song = directory.get(playIndex);
 
         // Set the file name used in onPrepared ^ up there someplace
@@ -167,6 +183,7 @@ public class MusicService extends Service
         mediaPlayer.seekTo(i);
     }
 
+
     public void start() {
         mediaPlayer.start();
     }
@@ -185,6 +202,10 @@ public class MusicService extends Service
             playIndex = 0;
         }
         playFile();
+    }
+
+    public String getFilename() {
+        return filename;
     }
 
     /*******************

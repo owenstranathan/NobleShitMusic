@@ -3,14 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/GoToHome"
-        android:orderInCategory="1"
         android:icon="@drawable/ic_home"
-        app:showAsAction="always" />
+        android:orderInCategory="1"
+        android:title="GoToHome"
+        app:showAsAction="ifRoom|withText" />
     <item
         android:id="@+id/SetAsHome"
         android:orderInCategory="2"
         android:title="@string/set_as_home"/>
-
     <item
         android:id="@+id/About"
         android:title="@string/about"

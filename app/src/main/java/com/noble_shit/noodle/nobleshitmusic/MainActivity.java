@@ -1,14 +1,19 @@
 package com.noble_shit.noodle.nobleshitmusic;
 
+import android.app.ActionBar;
+import android.app.DialogFragment;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.graphics.Typeface;
-import android.os.Build;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Environment;
 import android.os.IBinder;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.SpannableString;
@@ -19,7 +24,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.MediaController;
 import android.widget.TextView;
@@ -27,9 +31,7 @@ import android.widget.TextView;
 import com.noble_shit.noodle.MusicService;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -48,6 +50,7 @@ public class MainActivity extends AppCompatActivity
     private DirectoryStack  directoryStack;
 
     private TextView        directoryTextView;
+    private TextView        currentFileTextView;
 
     private boolean activityPaused = false;
 
@@ -62,7 +65,18 @@ public class MainActivity extends AppCompatActivity
 
     private MusicController musicController;
 
-    private boolean playbackPaused = false;
+
+    private Menu menu;
+
+    // Broadcast receiver to determine when music player has been prepared
+    private BroadcastReceiver onPrepareReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            // When music player has been prepared, show controller
+            showController();
+        }
+    };
+
 
 
     /****************
@@ -72,6 +86,7 @@ public class MainActivity extends AppCompatActivity
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main, menu);
+        this.menu = menu;
         return true;
     }
 
@@ -82,12 +97,15 @@ public class MainActivity extends AppCompatActivity
                 directory=baseDirectory;
                 updateDirectoryListView();
                 updateDirectoryTextView();
+                return true;
             case R.id.SetAsHome:
                 baseDirectory = directory;
                 updateDirectoryTextView();
                 return true;
             case R.id.About:
                 // show about dialog
+                DialogFragment aboutDialog = new AboutDialogFragment();
+                aboutDialog.show(getFragmentManager(), "aboutDialog");
                 return true;
             case R.id.Donate:
                 // link to patreon
@@ -135,8 +153,13 @@ public class MainActivity extends AppCompatActivity
         // Retrieve a reference to the current directory text view and keep it
         directoryTextView = (TextView) findViewById(R.id.DirectoryTextView);
 
+        //Retrieve a reference to the currentFileTextView and keep it
+        currentFileTextView = (TextView) findViewById(R.id.CurrentSongTextView);
+
         // Debug assertion check
         if (BuildConfig.DEBUG && directoryTextView == null) { throw new AssertionError("directoryTextView is null"); }
+        if (BuildConfig.DEBUG && currentFileTextView == null) { throw new AssertionError("currentFileTextView is null"); }
+
 
         // Update the directory TextView to display the current directory
         updateDirectoryTextView();
@@ -171,7 +194,6 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onBackPressed() {
-        Log.d("SHIT FUCK", "FUCK");
         directoryStack.pop();
         if (directory.equals(Environment.getExternalStorageDirectory())) {
             super.onBackPressed();
@@ -195,12 +217,13 @@ public class MainActivity extends AppCompatActivity
             setMusicController();
             activityPaused = false;
         }
+        LocalBroadcastManager.getInstance(this).registerReceiver(onPrepareReceiver, new IntentFilter(MusicService.MEDIA_PLAYER_PREPARED));
     }
 
     @Override
     protected void onStop() {
         saveSettings();
-        musicController.hide();
+        hideController();
         super.onStop();
     }
 
@@ -257,6 +280,12 @@ public class MainActivity extends AppCompatActivity
         directoryTextView.setText(spnstr);
     }
 
+    private void updateCurrentSongTextView() {
+        String currentSong = musicService.getFilename();
+        currentFileTextView.setText(currentSong);
+    }
+
+
     private List<File> directoryList() {
         List list = new ArrayList();
         for(File f : directory.listFiles()){
@@ -266,6 +295,7 @@ public class MainActivity extends AppCompatActivity
         Collections.sort(list);
         return list;
     }
+
 
     /***************************
      * SERVICE RELATED METHODS *
@@ -280,6 +310,8 @@ public class MainActivity extends AppCompatActivity
             // Not sure about this
             //musicService.setDirectory(directory);
             musicServiceBound = true;
+
+            updateCurrentSongTextView();
         }
 
         @Override
@@ -305,25 +337,43 @@ public class MainActivity extends AppCompatActivity
      **************************/
 
     private void setMusicController() {
-        musicController = new MusicController(this);
+        if(musicController == null)
+            musicController = new MusicController(this);
         musicController.setPrevNextListeners(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // playNext();
+                playNext();
             }
         }, new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // playPrevious();
+                playPrevious();
             }
         });
 
         musicController.setMediaPlayer(this);
-        musicController.setAnchorView(findViewById(R.id.DirectoryTextView));
+        musicController.setAnchorView(findViewById(R.id.DirectoryListView));
         musicController.setEnabled(true);
     }
 
 
+    private void showController() {
+        musicController.show(0);
+    }
+
+    private void hideController() {
+        musicController.hide();
+    }
+
+    public void toggleController(View view) {
+        if(musicService.isPrepared()) {
+            if (musicController.isShowing()) {
+                hideController();
+            } else {
+                showController();
+            }
+        }
+    }
 
     /************************************
      * MEDIACONTROLLER OVERRIDE METHODS *
@@ -335,7 +385,6 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void pause() {
-        playbackPaused = true;
         musicService.pause();
     }
 
@@ -394,31 +443,31 @@ public class MainActivity extends AppCompatActivity
 
     private void playPrevious() {
         musicService.previous();
-        if (playbackPaused) {
-            setMusicController();
-            playbackPaused = false;
-        }
-        musicController.show(0);
+        updateCurrentSongTextView();
     }
 
     private void playNext() {
         musicService.next();
-        if (playbackPaused) {
-            setMusicController();
-            playbackPaused = false;
-        }
-        musicController.show(0);
+        updateCurrentSongTextView();
     }
 
     private void playSong(int i) {
         musicService.setDirectory(directoryList());
         musicService.setPlayIndex(i);
         musicService.playFile();
-        if (playbackPaused) {
-            setMusicController();
-            playbackPaused = false;
-        }
-        musicController.show(0);
+        updateCurrentSongTextView();
     }
+
+
+    /******************
+    * Public Methods *
+     *****************/
+
+    public Menu getMenu(){
+        return menu;
+    }
+
+
+
 }
 
