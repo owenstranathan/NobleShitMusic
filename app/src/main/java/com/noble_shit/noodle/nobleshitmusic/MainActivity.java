@@ -49,6 +49,9 @@ public class MainActivity extends AppCompatActivity
 
     private TextView        directoryTextView;
 
+    private boolean activityPaused = false;
+
+
     // MUSIC SERVICE MEMBERS
 
     private MusicService    musicService;
@@ -58,6 +61,8 @@ public class MainActivity extends AppCompatActivity
     // MUSIC CONTROLLER MEMBERS
 
     private MusicController musicController;
+
+    private boolean playbackPaused = false;
 
 
     /****************
@@ -150,12 +155,6 @@ public class MainActivity extends AppCompatActivity
 
 
     @Override
-    protected void onStop() {
-        saveSettings();
-        super.onStop();
-    }
-
-    @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
         File file = (File) adapterView.getItemAtPosition(i);
 
@@ -166,14 +165,13 @@ public class MainActivity extends AppCompatActivity
             updateDirectoryTextView();
         } else {
             // Send everything in this directory to the MusicService
-            musicService.setDirectory(directoryList());
-            musicService.setPlayIndex(i);
-            musicService.playFile();
+            playSong(i);
         }
     }
 
     @Override
     public void onBackPressed() {
+        Log.d("SHIT FUCK", "FUCK");
         directoryStack.pop();
         if (directory.equals(Environment.getExternalStorageDirectory())) {
             super.onBackPressed();
@@ -183,6 +181,29 @@ public class MainActivity extends AppCompatActivity
             updateDirectoryTextView();
         }
     }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        activityPaused = true;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (activityPaused) {
+            setMusicController();
+            activityPaused = false;
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        saveSettings();
+        musicController.hide();
+        super.onStop();
+    }
+
 
 
     /*******************
@@ -298,42 +319,48 @@ public class MainActivity extends AppCompatActivity
         });
 
         musicController.setMediaPlayer(this);
-        musicController.setAnchorView(findViewById(R.id.DirectoryListView));
+        musicController.setAnchorView(findViewById(R.id.DirectoryTextView));
         musicController.setEnabled(true);
     }
+
+
 
     /************************************
      * MEDIACONTROLLER OVERRIDE METHODS *
      ***********************************/
 
-    @Override
-    public void start() {
 
-    }
+    @Override
+    public void start() { musicService.start();}
 
     @Override
     public void pause() {
-
+        playbackPaused = true;
+        musicService.pause();
     }
 
     @Override
     public int getDuration() {
-        return 0;
+        if (musicService != null && musicServiceBound && musicService.isPlaying()) {
+            return musicService.getDuration();
+        }else return 0;
     }
 
     @Override
     public int getCurrentPosition() {
-        return 0;
+        if (musicService != null && musicServiceBound && musicService.isPlaying()) {
+            return musicService.getCurrentPosition();
+        } else return 0;
     }
 
     @Override
-    public void seekTo(int i) {
-
-    }
+    public void seekTo(int i) { musicService.seekTo(i); }
 
     @Override
     public boolean isPlaying() {
-        return false;
+        if (musicService != null && musicServiceBound)
+            return musicService.isPlaying();
+        else return false;
     }
 
     @Override
@@ -343,22 +370,55 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean canPause() {
-        return false;
+        return true;
     }
 
     @Override
     public boolean canSeekBackward() {
-        return false;
+        if (musicService != null && musicServiceBound && musicService.isPlaying())
+            return true;
+        else return false;
     }
 
     @Override
     public boolean canSeekForward() {
-        return false;
+        if (musicService != null && musicServiceBound && musicService.isPlaying())
+            return true;
+        else return false;
     }
 
     @Override
     public int getAudioSessionId() {
         return 0;
+    }
+
+    private void playPrevious() {
+        musicService.previous();
+        if (playbackPaused) {
+            setMusicController();
+            playbackPaused = false;
+        }
+        musicController.show(0);
+    }
+
+    private void playNext() {
+        musicService.next();
+        if (playbackPaused) {
+            setMusicController();
+            playbackPaused = false;
+        }
+        musicController.show(0);
+    }
+
+    private void playSong(int i) {
+        musicService.setDirectory(directoryList());
+        musicService.setPlayIndex(i);
+        musicService.playFile();
+        if (playbackPaused) {
+            setMusicController();
+            playbackPaused = false;
+        }
+        musicController.show(0);
     }
 }
 
